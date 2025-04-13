@@ -47,6 +47,7 @@ class NeuralCBFController(pl.LightningModule, CBFController):
         scale_parameter: float = 10.0,
         learn_shape_epochs: int = 0,
         use_relu: bool = False,
+        disable_gurobi: bool = False,
     ):
         """Initialize the controller.
 
@@ -72,6 +73,7 @@ class NeuralCBFController(pl.LightningModule, CBFController):
             cbf_lambda=cbf_lambda,
             cbf_relaxation_penalty=cbf_relaxation_penalty,
             controller_period=controller_period,
+            disable_gurobi=disable_gurobi,
         )
         self.save_hyperparameters()
 
@@ -315,6 +317,31 @@ class NeuralCBFController(pl.LightningModule, CBFController):
 
     def training_epoch_end(self, outputs):
         """This function is called after every epoch is completed."""
+
+        # move most recent ckpt
+        import os
+        import re
+        import shutil
+        from pathlib import Path
+        outdir = 'outputs'
+        versions = [int(name[len('version_'):]) for name in os.listdir(outdir) if name[:len('version')] == 'version']
+        ckptdir = Path(os.path.join(outdir, f'version_{str(max(versions))}', 'checkpoints'))
+        pattern = re.compile(r'epoch=(\d+)-step=(\d+)\.ckpt')
+        max_epoch = -1
+        ckptpath = None
+        for path in ckptdir.glob('*.ckpt'):
+            match = pattern.match(path.name)
+            if match:
+                epoch = int(match.group(1))
+                if epoch >= max_epoch:
+                    max_epoch = epoch
+                    ckptpath = path
+        if ckptpath is not None:
+            shutil.move(str(ckptpath), 'outputs/cbf.ckpt')
+            print(f'MOVED: {str(ckptpath)}')
+        else:
+            print('COULD NOT FIND A CKPT TO MOVE! (FOR EPOCH 0, THIS IS EXPECTED)')
+
         # Outputs contains a list for each optimizer, and we need to collect the losses
         # from all of them if there is a nested list
         if isinstance(outputs[0], list):

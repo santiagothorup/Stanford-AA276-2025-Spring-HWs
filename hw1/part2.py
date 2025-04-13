@@ -16,7 +16,7 @@ Please refer to the Homework 1 handout for instructions and implementation detai
 Function headers are provided below.
 Your code should go into the sections marked by "YOUR CODE HERE"
 
-When you are done, you can sanity check your code by running `python scripts/check2.py`.
+When you are done, you can sanity check your code (locally) by running `python scripts/check2.py`.
 """
 
 

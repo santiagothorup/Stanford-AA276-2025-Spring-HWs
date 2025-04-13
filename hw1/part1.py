@@ -26,8 +26,8 @@ Please refer to the Homework 1 handout for instructions and implementation detai
 Function headers are provided below.
 Your code should go into the sections marked by "YOUR CODE HERE"
 
-When you are done, you can sanity check your code by running `python scripts/check1.py`.
-After the tests pass, train a neural CBF by running `python scripts/train.py`.
+When you are done, you can sanity check your code (locally) by running `python scripts/check1.py`.
+After the tests pass, train a neural CBF (in your VM) by running `python scripts/train.py`.
 
 
 IMPORTANT NOTES ON TRAINING

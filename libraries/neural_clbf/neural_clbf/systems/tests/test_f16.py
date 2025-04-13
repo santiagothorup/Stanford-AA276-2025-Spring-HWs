@@ -5,13 +5,13 @@ from warnings import warn
 import torch
 import numpy as np
 
-try:
-    from neural_clbf.systems import F16
-except ImportError:
-    warn("Could not import F16 module")
-    pytest.skip(
-        "Could not import F16 module; is AeroBench installed?", allow_module_level=False
-    )
+# try:
+#     from neural_clbf.systems import F16
+# except ImportError:
+#     warn("Could not import F16 module")
+#     pytest.skip(
+#         "Could not import F16 module; is AeroBench installed?", allow_module_level=False
+#     )
 
 
 def test_f16_init():

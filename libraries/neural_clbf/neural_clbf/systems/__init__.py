@@ -15,6 +15,7 @@ from .turtlebot_2d import TurtleBot2D
 from .linear_satellite import LinearSatellite
 from .single_integrator_2d import SingleIntegrator2D
 from .autorally import AutoRally
+from .quad13 import Quad13D
 
 __all__ = [
     "ControlAffineSystem",
@@ -32,11 +33,12 @@ __all__ = [
     "LinearSatellite",
     "SingleIntegrator2D",
     "AutoRally",
+    "Quad13D",
 ]
 
-try:
-    from .f16 import F16  # noqa
+# try:
+#     from .f16 import F16  # noqa
 
-    __all__.append("F16")
-except ImportError:
-    warn("Could not import F16 module; is AeroBench installed")
+#     __all__.append("F16")
+# except ImportError:
+#     warn("Could not import F16 module; is AeroBench installed")

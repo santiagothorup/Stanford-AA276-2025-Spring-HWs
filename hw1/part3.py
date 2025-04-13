@@ -17,7 +17,7 @@ Please refer to the Homework 1 handout for instructions and implementation detai
 Function headers are provided below.
 Your code should go into the sections marked by "YOUR CODE HERE"
 
-When you are done, make sure that there is a CBF model checkpoint
+When you are done, make sure that (in your VM) there is a CBF model checkpoint
 saved at `outputs/cbf.ckpt`. Then, run `python scripts/plot.py`.
 Submit the false safety rate reported in the terminal and the plot that is
 saved to `outputs/plot.png`.
@@ -41,20 +41,20 @@ def plot_h(fig, ax, px, py, slice, h_fn):
     args:
         fig: matplotlib Figure
         ax: matplotlib Axes
-        px: torch float32 tensor with shape [100]
-        py: torch float32 tensor with shape [100]
+        px: torch float32 tensor with shape [npx]
+        py: torch float32 tensor with shape [npy]
         slice: torch float32 tensor with shape [13] (first 2 elements can be ignored)
         h_fn: Callable h=h_fn(x)
             h_fn takes a torch float32 tensor with shape [batch_size, 13]
             and outputs a torch float32 tensor with shape [batch_size]
     """
     # here is some starting code that might be helpful:
-    PX, PY = torch.meshgrid(px, py, indexing='ij')
-    X = torch.zeros((100, 100, 13))
+    PX, PY = torch.meshgrid(px, py)
+    X = torch.zeros((len(px), len(py), 13))
     X[..., 0] = PX
     X[..., 1] = PY
     X[..., 2:] = slice[2:]
-    # X: torch float32 tensor with shape [100, 100, 13] is a 2D grid of states
+    # X: torch float32 tensor with shape [len(px), len(py), 13] is a 2D grid of states
     # you should plot h_fn(X) (reshape X as needed to be compatible with h_fn)
     # you might want to use ax.pcolormesh(.), fig.colorbar(.), and ax.contour(.)
 
