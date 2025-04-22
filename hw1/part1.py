@@ -40,9 +40,7 @@ Try your best to not exceed $10 in credits -  you can stop training early if you
 REMEMBER TO SHUTDOWN YOUR VIRTUAL MACHINES AFTER TRAINING, TO AVOID ACCUMULATING FEES.
 """
 
-
 import torch
-
 
 def state_limits():
         """
@@ -53,8 +51,10 @@ def state_limits():
                 where upper: torch float32 tensor with shape [13]
                       lower: torch float32 tensor with shape [13]
         """
-        # YOUR CODE HERE
-        pass
+        upper = torch.tensor([3,3,3,1,1,1,1,5,5,5,5,5,5], dtype=torch.float32)
+        lower = torch.tensor([-3,-3,-3,-1,-1,-1,-1,-5,-5,-5,-5,-5,-5], dtype=torch.float32)
+        
+        return upper, lower
 
 
 def control_limits():
@@ -64,10 +64,12 @@ def control_limits():
     returns:
         (upper, lower)
             where upper: torch float32 tensor with shape [4]
-                  lower: torch float32 tensor with shape [4]
+                lower: torch float32 tensor with shape [4]
     """
-    # YOUR CODE HERE
-    pass
+    upper = torch.tensor([20, 8, 8, 4], dtype=torch.float32)
+    lower = torch.tensor([-20, -8, -8, -4], dtype=torch.float32)
+    
+    return upper, lower
 
 
 """Note: the following functions operate on batched inputs.""" 
@@ -83,8 +85,20 @@ def safe_mask(x):
     returns:
         is_safe: torch bool tensor with shape [batch_size]
     """
-    # YOUR CODE HERE
-    pass
+    # Safe set C = {x: sqrt(px^2 + py^2) > 2.8}
+    Px = x[:, 0]
+    Py = x[:, 1]
+    
+    batch_size = x.shape[0]
+    is_safe = torch.zeros(batch_size, dtype=torch.bool)
+    
+    for i in range(batch_size):
+        if (Px[i]**2 + Py[i]**2)**0.5 > 2.8:
+            is_safe[i] = True
+        else:
+            is_safe[i] = False
+    
+    return is_safe
 
 
 def failure_mask(x):
@@ -97,8 +111,20 @@ def failure_mask(x):
     returns:
         is_failure: torch bool tensor with shape [batch_size]
     """
-    # YOUR CODE HERE
-    pass
+    # Failure set L = {x: sqrt(px^2 + py^2) < 0.5}
+    Px = x[:, 0]
+    Py = x[:, 1]
+    
+    batch_size = x.shape[0]
+    is_failure = torch.zeros(batch_size, dtype=torch.bool)
+    
+    for i in range(batch_size):
+        if (Px[i]**2 + Py[i]**2)**0.5 < 0.5:
+            is_failure[i] = True
+        else:
+            is_failure[i] = False
+    
+    return is_failure
 
 
 def f(x):
@@ -135,9 +161,20 @@ def g(x):
 
     args:
         x: torch float32 tensor with shape [batch_size, 13]
-       
     returns:
         g: torch float32 tensor with shape [batch_size, 13, 4]
     """
-    # YOUR CODE HERE
-    pass
+    PXi, PYi, PZi, QWi, QXi, QYi, QZi, VXi, VYi, VZi, WXi, WYi, WZi = [i for i in range(13)]
+    PX, PY, PZ, QW, QX, QY, QZ, VX, VY, VZ, WX, WY, WZ = [x[:, i] for i in range(13)]
+
+    batch_size = x.shape[0]
+    g = torch.zeros(batch_size, 13, 4, dtype=torch.float32)
+
+    g[:, VXi, 0] = 2*(QW*QY + QX*QZ)
+    g[:, VYi, 0] = 2*(QY*QZ - QW*QX)
+    g[:, VZi, 0] = 2*(0.5 - QX**2 - QY**2)
+    g[:, WXi, 1] = 1
+    g[:, WYi, 2] = 1
+    g[:, WZi, 3] = 1
+    
+    return g
