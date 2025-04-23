@@ -58,15 +58,14 @@ def plot_h(fig, ax, px, py, slice, h_fn):
     # you should plot h_fn(X) (reshape X as needed to be compatible with h_fn)
     # you might want to use ax.pcolormesh(.), fig.colorbar(.), and ax.contour(.)
 
-    with torch.no_grad():
-        H = h_fn(X.view(-1, 13)).view_as(PX)            # no grad tracking
-    H = H.detach().cpu()                                # safe for NumPy / Matplotlib
-    
-    mesh = ax.pcolormesh(PX.t().cpu(), PY.t().cpu(), H.t(),
-                    cmap="viridis", shading="auto")
-    fig.colorbar(mesh, ax=ax, label="h(x)")
+    H = h_fn(X.reshape(-1, 13))              
+    H = H.view_as(PX).detach().cpu()    
 
-    ax.contour(PX.t().cpu(), PY.t().cpu(), H.t(), levels=[0], colors="red", linewidths=1.0, linestyles="-")
+    Hplt, PXplt, PYplt = H.t(), PX.t().cpu(), PY.t().cpu()
+
+    mesh = ax.pcolormesh(PXplt, PYplt, Hplt,cmap="viridis", shading="auto")
+    fig.colorbar(mesh, ax=ax, label="h(x)")
+    ax.contour(PXplt, PYplt, Hplt,levels=[0.0], colors="red", linewidths=1.0)
 
 
 
@@ -116,24 +115,30 @@ def plot_and_eval_xts(fig, ax, x0, u_ref_fn, h_fn, dhdx_fn, gamma, lmbda, nt, dt
     # first, you should compute state trajectories xts using roll_out(.)
 
     # Roll out the system with the CBF-QP controller
-    xts = roll_out(x0, u_fn, nt, dt)
-    batch_size = x0.shape[0]
-    
-    # Safety/failure masks
-    safe_init = safe_mask(x0)
-    fail_traj = failure_mask(xts.reshape(-1, 13))
-    fail_traj = fail_traj.view(batch_size, nt).any(dim=1)
-    
-    num_safe = safe_init.sum().item()
-    false_safety_rate = ((safe_init & fail_traj).sum().item() / num_safe if num_safe > 0 else 0.0)
-    
-    # Plotting
+    xts         = roll_out(x0, u_fn, nt, dt)
+    B           = x0.shape[0]
+
+    # ------------------------------------------------------------------
+    # 3) Evaluate safety
+    # ------------------------------------------------------------------
+    safe_init   = safe_mask(x0)                                     # [B]
+    left_safe   = (~safe_mask(xts.reshape(-1, 13)))                 # [B·nt]
+    left_safe   = left_safe.view(B, nt).any(dim=1)                  # [B]
+
+    false_safety_rate = (
+        (safe_init & left_safe).float().sum().item() /
+        max(safe_init.sum().item(), 1)                              # avoid /0
+    )
+
+    # ------------------------------------------------------------------
+    # 4) Plot trajectories
+    # ------------------------------------------------------------------
     px_traj = xts[:, :, 0].cpu().numpy()
     py_traj = xts[:, :, 1].cpu().numpy()
-    
-    for i in range(batch_size):
-        ax.plot(px_traj[i], py_traj[i], 
-                color="red" if fail_traj[i] else "blue", 
-                alpha=0.7, linewidth=1.0)
+
+    for i in range(B):
+        ax.plot(px_traj[i], py_traj[i],
+                color = "red"  if left_safe[i] else "blue",
+                linewidth = 1.0, alpha = 0.8)
 
     return false_safety_rate
