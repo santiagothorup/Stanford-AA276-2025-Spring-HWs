@@ -58,7 +58,9 @@ def plot_h(fig, ax, px, py, slice, h_fn):
     # you should plot h_fn(X) (reshape X as needed to be compatible with h_fn)
     # you might want to use ax.pcolormesh(.), fig.colorbar(.), and ax.contour(.)
 
-    H = h_fn(X.view(-1, 13)).view_as(PX).cpu()
+    with torch.no_grad():
+        H = h_fn(X.view(-1, 13)).view_as(PX)            # no grad tracking
+    H = H.detach().cpu()                                # safe for NumPy / Matplotlib
     
     mesh = ax.pcolormesh(PX.cpu(), PY.cpu(), H, cmap="viridis", shading="auto")
     fig.colorbar(mesh, ax=ax, label="h(x)")
