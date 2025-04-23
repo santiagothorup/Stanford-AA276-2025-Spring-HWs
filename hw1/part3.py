@@ -58,8 +58,12 @@ def plot_h(fig, ax, px, py, slice, h_fn):
     # you should plot h_fn(X) (reshape X as needed to be compatible with h_fn)
     # you might want to use ax.pcolormesh(.), fig.colorbar(.), and ax.contour(.)
 
-    # YOUR CODE HERE
-    pass
+    H = h_fn(X.view(-1, 13)).view_as(PX).cpu()
+    
+    mesh = ax.pcolormesh(PX.cpu(), PY.cpu(), H, cmap="viridis", shading="auto")
+    fig.colorbar(mesh, ax=ax, label="h(x)")
+    ax.contour(PX.cpu(), PY.cpu(), H, levels=[0], colors="red", linewidths=1.0, linestyles="-")
+
 
 
 from part1 import safe_mask, failure_mask
@@ -106,5 +110,29 @@ def plot_and_eval_xts(fig, ax, x0, u_ref_fn, h_fn, dhdx_fn, gamma, lmbda, nt, dt
         return u_qp(x, h_fn(x), dhdx_fn(x), u_ref_fn(x), gamma, lmbda)
     # first, you should compute state trajectories xts using roll_out(.)
 
-    # YOUR CODE HERE
-    pass
+    # Roll out the system with the CBF-QP controller
+    xts = roll_out(x0, u_fn, nt, dt)
+    batch_size = x0.shape[0]
+    
+    # Safety/failure masks
+    safe_init = safe_mask(x0)
+    fail_traj = failure_mask(xts.reshape(-1, 13))
+    fail_traj = fail_traj.view(batch_size, nt).any(dim=1)
+    
+    num_safe = safe_init.sum().item()
+    false_safety_rate = ((safe_init & fail_traj).sum().item() / num_safe if num_safe > 0 else 0.0)
+    
+    # Plotting
+    px_traj = xts[:, :, 0].cpu().numpy()
+    py_traj = xts[:, :, 1].cpu().numpy()
+    
+    for i in range(batch_size):
+        ax.plot(px_traj[i], py_traj[i], 
+                color="red" if fail_traj[i] else "blue", 
+                alpha=0.7, linewidth=1.0)
+    
+    ax.scatter(x0[:,0].cpu(), x0[:,1].cpu(),
+            c=["green" if s.item() else "black" for s in safe_init],
+            marker="x", zorder=3)
+
+    return false_safety_rate
