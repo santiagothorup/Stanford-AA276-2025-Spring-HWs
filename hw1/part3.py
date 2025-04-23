@@ -58,14 +58,19 @@ def plot_h(fig, ax, px, py, slice, h_fn):
     # you should plot h_fn(X) (reshape X as needed to be compatible with h_fn)
     # you might want to use ax.pcolormesh(.), fig.colorbar(.), and ax.contour(.)
 
-    H = h_fn(X.reshape(-1, 13))              
-    H = H.view_as(PX).detach().cpu()    
+    # --  evaluate h(x) ---------------------------------------------------
+    H = h_fn(X.reshape(-1, 13))                 # [npx·npy]
+    H = H.view_as(PX).detach().cpu()            # [npx, npy]  → CPU for plotting
 
-    Hplt, PXplt, PYplt = H.t(), PX.t().cpu(), PY.t().cpu()
+    # --  transpose once so Matplotlib sees Cartesian x/y orientation ----
+    PXplt, PYplt, Hplt = PX.t().cpu(), PY.t().cpu(), H.t()
 
-    mesh = ax.pcolormesh(PXplt, PYplt, Hplt,cmap="viridis", shading="auto")
+    mesh = ax.pcolormesh(PXplt, PYplt, Hplt,
+                        cmap="viridis", shading="auto")
     fig.colorbar(mesh, ax=ax, label="h(x)")
-    ax.contour(PXplt, PYplt, Hplt,levels=[0.0], colors="red", linewidths=1.0)
+    ax.contour(PXplt, PYplt, Hplt,
+            levels=[0.0], colors="red",
+            linewidths=1.0, linestyles="-")
 
 
 
@@ -114,27 +119,27 @@ def plot_and_eval_xts(fig, ax, x0, u_ref_fn, h_fn, dhdx_fn, gamma, lmbda, nt, dt
         return u_qp(x, h_fn(x), dhdx_fn(x), u_ref_fn(x), gamma, lmbda)
     # first, you should compute state trajectories xts using roll_out(.)
 
-    # Roll out the system with the CBF-QP controller
-    xts         = roll_out(x0, u_fn, nt, dt)
-    B           = x0.shape[0]
+    xts = roll_out(x0, u_fn, nt, dt)
+    B   = x0.shape[0]
 
     # ------------------------------------------------------------------
-    # 3) Evaluate safety
+    # 3) Safety bookkeeping
     # ------------------------------------------------------------------
-    safe_init   = safe_mask(x0)                                     # [B]
-    left_safe   = (~safe_mask(xts.reshape(-1, 13)))                 # [B·nt]
-    left_safe   = left_safe.view(B, nt).any(dim=1)                  # [B]
+    safe_init   = safe_mask(x0)                                   # [B]
 
-    false_safety_rate = (
-        (safe_init & left_safe).float().sum().item() /
-        max(safe_init.sum().item(), 1)                              # avoid /0
-    )
+    # trajectory is unsafe if *any* state leaves the safe set C
+    left_safe   = (~safe_mask(xts.reshape(-1, 13)))               # [B·nt]
+    left_safe   = left_safe.view(B, nt).any(dim=1)                # [B]
+
+    denom = max(safe_init.sum().item(), 1)                       # avoid /0
+    false_safety_rate = ((safe_init & left_safe).float().sum().item()
+                        / denom)
 
     # ------------------------------------------------------------------
     # 4) Plot trajectories
     # ------------------------------------------------------------------
-    px_traj = xts[:, :, 0].cpu().numpy()
-    py_traj = xts[:, :, 1].cpu().numpy()
+    px_traj = xts[..., 0].cpu().numpy()      # [B, nt]
+    py_traj = xts[..., 1].cpu().numpy()      # [B, nt]
 
     for i in range(B):
         ax.plot(px_traj[i], py_traj[i],
