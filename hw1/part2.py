@@ -41,10 +41,11 @@ def euler_step(x, u, dt):
     returns:
         xn: torch float32 tensor with shape [batch_size, 13]
     """
-    # YOUR CODE HERE
-    pass
+    gxu = torch.bmm(g(x), u.unsqueeze(2)).squeeze(2)
+    xn = x + (f(x) + gxu) * dt
+    return xn
 
-    
+
 def roll_out(x0, u_fn, nt, dt):
     """
     Return the state trajectories xts obtained by rolling out the system
@@ -64,11 +65,17 @@ def roll_out(x0, u_fn, nt, dt):
     returns:
         xts: torch float32 tensor with shape [batch_size, nt, 13]
     """
-    # YOUR CODE HERE
-    pass
-
+    batch_size = x0.shape[0]
+    xts = torch.zeros((batch_size, nt, 13), dtype=torch.float32)
+    x = x0.clone()
+    for i in range(nt):
+        u = u_fn(x)
+        x = euler_step(x, u, dt)
+        xts[:, i, :] = x
+    return xts
 
 import cvxpy as cp
+import numpy as np
 from part1 import control_limits
 
 
@@ -94,5 +101,51 @@ def u_qp(x, h, dhdx, u_ref, gamma, lmbda):
     returns:
         u_qp: torch float32 tensor with shape [batch_size, 4]
     """
-    # YOUR CODE HERE
-    pass
+    # Convert inputs to numpy arrays
+    x_np      = x.detach().cpu().numpy()      
+    h_np      = h.detach().cpu().numpy()    
+    dhdx_np   = dhdx.detach().cpu().numpy()    
+    u_ref_np  = u_ref.detach().cpu().numpy()    
+    
+    # Convert control limits to numpy arrays
+    u_upp, u_low = control_limits()  
+    u_upp = u_upp.detach().cpu().numpy()   # upper bounds
+    u_low = u_low.detach().cpu().numpy()     # lower bounds
+    
+    # Defining f(x) and g(x) 
+    f_val = f(x).detach().cpu().numpy()
+    g_val = g(x).detach().cpu().numpy()
+    
+    batch_size = x_np.shape[0]
+    
+    # Initialize u_qp
+    u_qp_np = np.zeros((batch_size, 4))
+    
+    for i in range(batch_size):
+        # Define variables
+        u_i = cp.Variable(4)
+        delta_i = cp.Variable()
+        
+        # Calculating lie derivatives
+        Lf_h_i = np.dot(dhdx_np[i], f_val[i])
+        Lg_h_i = dhdx_np[i].dot(g_val[i])
+        
+        # Calculating h_dot
+        h_dot_i = Lf_h_i + cp.sum(cp.multiply(Lg_h_i, u_i))
+        
+        # Defining Constraints
+        constraints = [
+            u_low <= u_i, u_i <= u_upp, # Control limits
+            h_dot_i + gamma*h_np[i] + delta_i >= 0,  # CBF condition
+            delta_i >= 0  # Non-negativity of delta
+        ]
+        
+        # Defining Objective 
+        objective = cp.Minimize(cp.sum_squares(u_i - u_ref_np[i]) + lmbda * cp.square(delta_i))
+        
+        # Defining Problem 
+        prob = cp.Problem(objective, constraints)
+        prob.solve()
+        
+        u_qp_np[i,:] = u_i.value
+    return torch.tensor(u_qp_np, dtype=torch.float32)
