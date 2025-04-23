@@ -49,7 +49,7 @@ def plot_h(fig, ax, px, py, slice, h_fn):
             and outputs a torch float32 tensor with shape [batch_size]
     """
     # here is some starting code that might be helpful:
-    PX, PY = torch.meshgrid(px, py, indexing="xy")  
+    PX, PY = torch.meshgrid(px, py)  
     X = torch.zeros((len(px), len(py), 13))
     X[..., 0] = PX
     X[..., 1] = PY
@@ -62,9 +62,12 @@ def plot_h(fig, ax, px, py, slice, h_fn):
         H = h_fn(X.view(-1, 13)).view_as(PX)            # no grad tracking
     H = H.detach().cpu()                                # safe for NumPy / Matplotlib
     
-    mesh = ax.pcolormesh(PX.cpu(), PY.cpu(), H, cmap="viridis", shading="auto")
+    mesh = ax.pcolormesh(PX.t().cpu(), PY.t().cpu(), H.t(),
+                    cmap="viridis", shading="auto")
     fig.colorbar(mesh, ax=ax, label="h(x)")
-    ax.contour(PX.cpu(), PY.cpu(), H, levels=[0], colors="red", linewidths=1.0, linestyles="-")
+
+    ax.contour(PX.t().cpu(), PY.t().cpu(), H.t(), levels=[0], colors="red", linewidths=1.0, linestyles="-")
+
 
 
 
