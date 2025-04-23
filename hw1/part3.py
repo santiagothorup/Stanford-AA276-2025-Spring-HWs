@@ -27,7 +27,8 @@ REMEMBER TO SHUTDOWN YOUR VIRTUAL MACHINES AFTER TRAINING, TO AVOID ACCUMULATING
 
 
 import torch
-
+import numpy as np
+import matplotlib as mpl
 
 def plot_h(fig, ax, px, py, slice, h_fn):
     """
@@ -58,20 +59,29 @@ def plot_h(fig, ax, px, py, slice, h_fn):
     # you should plot h_fn(X) (reshape X as needed to be compatible with h_fn)
     # you might want to use ax.pcolormesh(.), fig.colorbar(.), and ax.contour(.)
 
-    # --  evaluate h(x) ---------------------------------------------------
-    H = h_fn(X.reshape(-1, 13))                 # [npx·npy]
-    H = H.view_as(PX).detach().cpu()            # [npx, npy]  → CPU for plotting
+    npx, npy = PX.shape
+    
+    with torch.no_grad():
+        h_vals = h_fn(X.reshape(-1, 13)).reshape(npx, npy)
 
-    # --  transpose once so Matplotlib sees Cartesian x/y orientation ----
-    PXplt, PYplt, Hplt = PX.t().cpu(), PY.t().cpu(), H.t()
+    # Convert to NumPy 
+    PX_np = PX.cpu().numpy()
+    PY_np = PY.cpu().numpy()
+    H_np  = h_vals.cpu().numpy()
 
-    mesh = ax.pcolormesh(PXplt, PYplt, Hplt,
-                        cmap="viridis", shading="auto")
-    fig.colorbar(mesh, ax=ax, label="h(x)")
-    ax.contour(PXplt, PYplt, Hplt,
-            levels=[0.0], colors="red",
-            linewidths=1.0, linestyles="-")
+    # Plot: heat-map, color-bar, and zero contour 
+    cmap = mpl.cm.get_cmap("RdBu_r")     
+    im   = ax.pcolormesh(PX_np, PY_np, H_np,
+                        cmap=cmap, shading="auto")
+    cbar = fig.colorbar(im, ax=ax)
+    cbar.set_label(r"$h(x)$")
 
+    # Zero level-set (CBF boundary)
+    ax.contour(PX_np, PY_np, H_np,
+            levels=[0.0], colors="k", linewidths=2)
+
+    # Make the plot square in physical units
+    ax.set_aspect("equal")
 
 
 
@@ -120,30 +130,29 @@ def plot_and_eval_xts(fig, ax, x0, u_ref_fn, h_fn, dhdx_fn, gamma, lmbda, nt, dt
     # first, you should compute state trajectories xts using roll_out(.)
 
     xts = roll_out(x0, u_fn, nt, dt)
-    B   = x0.shape[0]
+    
+    traj_np = xts.detach().cpu().numpy()     
+    for traj in traj_np:
+        ax.plot(
+            traj[:, 0],                       # p_x
+            traj[:, 1],                       # p_y
+            lw=1.0,
+            alpha=0.8,
+            color="k",
+        )
+    
+    batch_size = x0.shape[0]
 
-    # ------------------------------------------------------------------
-    # 3) Safety bookkeeping
-    # ------------------------------------------------------------------
-    safe_init   = safe_mask(x0)                                   # [B]
+    safe_init   = safe_mask(x0)        
 
-    # trajectory is unsafe if *any* state leaves the safe set C
-    left_safe   = (~safe_mask(xts.reshape(-1, 13)))               # [B·nt]
-    left_safe   = left_safe.view(B, nt).any(dim=1)                # [B]
+    full_traj   = torch.cat([x0.unsqueeze(1), xts], dim=1) 
+    fail_any    = failure_mask(full_traj.reshape(-1, 13))  
+    fail_any    = fail_any.view(batch_size, nt + 1).any(dim=1) 
 
-    denom = max(safe_init.sum().item(), 1)                       # avoid /0
-    false_safety_rate = ((safe_init & left_safe).float().sum().item()
-                        / denom)
+    false_safe  = safe_init & fail_any
 
-    # ------------------------------------------------------------------
-    # 4) Plot trajectories
-    # ------------------------------------------------------------------
-    px_traj = xts[..., 0].cpu().numpy()      # [B, nt]
-    py_traj = xts[..., 1].cpu().numpy()      # [B, nt]
-
-    for i in range(B):
-        ax.plot(px_traj[i], py_traj[i],
-                color = "red"  if left_safe[i] else "blue",
-                linewidth = 1.0, alpha = 0.8)
+    n_safe      = safe_init.sum().item()
+    n_false     = false_safe.sum().item()
+    false_safety_rate = float(n_false) / n_safe if n_safe > 0 else 0.0
 
     return false_safety_rate
