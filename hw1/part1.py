@@ -41,9 +41,8 @@ REMEMBER TO SHUTDOWN YOUR VIRTUAL MACHINES AFTER TRAINING, TO AVOID ACCUMULATING
 """
 
 import torch
-import numpy as np
 
-BONUS = True 
+BONUS = False 
 
 def state_limits():
     """
@@ -99,7 +98,7 @@ def safe_mask(x):
     if BONUS:
         # h(x) parameters
         a = 0.1  # rad
-        b = np.sqrt(((3 - 20 * np.sin(a))/2) * a) # rad/s
+        b = torch.sqrt(((3 - 20 * torch.sin(a))/2) * a) # rad/s
         
         batch_size = x.shape[0]
         is_safe = torch.zeros(batch_size, dtype=torch.bool)
@@ -141,7 +140,7 @@ def failure_mask(x):
         is_failure = torch.zeros(batch_size, dtype=torch.bool)
         
         for i in range(batch_size):
-            if np.abs(x[i:0]) > 0.3:
+            if torch.abs(x[i:0]) > 0.3:
                 is_failure[i] = True
             else:
                 is_failure[i] = False
