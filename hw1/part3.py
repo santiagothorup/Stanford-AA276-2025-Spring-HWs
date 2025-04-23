@@ -49,7 +49,7 @@ def plot_h(fig, ax, px, py, slice, h_fn):
             and outputs a torch float32 tensor with shape [batch_size]
     """
     # here is some starting code that might be helpful:
-    PX, PY = torch.meshgrid(px, py)
+    PX, PY = torch.meshgrid(px, py, indexing="xy")  
     X = torch.zeros((len(px), len(py), 13))
     X[..., 0] = PX
     X[..., 1] = PY
