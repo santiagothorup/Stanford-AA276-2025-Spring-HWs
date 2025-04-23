@@ -132,9 +132,5 @@ def plot_and_eval_xts(fig, ax, x0, u_ref_fn, h_fn, dhdx_fn, gamma, lmbda, nt, dt
         ax.plot(px_traj[i], py_traj[i], 
                 color="red" if fail_traj[i] else "blue", 
                 alpha=0.7, linewidth=1.0)
-    
-    ax.scatter(x0[:,0].cpu(), x0[:,1].cpu(),
-            c=["green" if s.item() else "black" for s in safe_init],
-            marker="x", zorder=3)
 
     return false_safety_rate
