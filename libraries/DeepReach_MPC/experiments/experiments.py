@@ -208,11 +208,15 @@ class Experiment(ABC):
                         'optimizer': self.optim.state_dict()}
                     torch.save(checkpoint,
                                os.path.join(checkpoints_dir, 'model_epoch_%04d.pth' % (epoch+1)))
+                    # copy checkpoint to homework outputs folder
+                    path = shutil.copy(os.path.join(checkpoints_dir, 'model_epoch_%04d.pth' % (epoch+1)), 'outputs/vf.ckpt')
+                    print(f'COPIED CHECKPOINT TO {path}')
                     np.savetxt(os.path.join(checkpoints_dir, 'train_losses_epoch_%04d.txt' % (epoch+1)),
                                np.array(train_losses))
                     self.validate(
-                        epoch=epoch+1, save_path=os.path.join(checkpoints_dir, 'BRS_validation_plot_epoch_%04d.png' % (epoch+1)),
+                        epoch=epoch+1, save_path='outputs/values.png',
                         x_resolution=val_x_resolution, y_resolution=val_y_resolution, z_resolution=val_z_resolution, time_resolution=val_time_resolution)
+                    print('SAVED PLOT TO outputs/values.png')
 
         torch.save(checkpoint, os.path.join(
             checkpoints_dir, 'model_final.pth')) # save final model
@@ -983,7 +987,9 @@ class Experiment(ABC):
 
                 ax = fig.add_subplot(len(times), len(zs), (j+1) + i*len(zs))
                 ax.set_title('t = %0.2f, %s = %0.2f' % (
-                    times[i], plot_config['state_labels'][plot_config['z_axis_idx']], zs[j]))
+                    -times[i], plot_config['state_labels'][plot_config['z_axis_idx']], zs[j]))
+                ax.set_xlabel(plot_config['state_labels'][plot_config['x_axis_idx']])
+                ax.set_ylabel(plot_config['state_labels'][plot_config['y_axis_idx']])
 
                 BRT_img = values.detach().cpu().numpy().reshape(x_resolution, y_resolution).T
 
@@ -1041,11 +1047,18 @@ class Experiment(ABC):
         else:
             fig= self.plotMultipleFigs(
                 state_test_range, plot_config, x_resolution, y_resolution, z_resolution, times)
+        axis_indices = [
+            plot_config['x_axis_idx'],
+            plot_config['y_axis_idx'],
+            plot_config['z_axis_idx']
+        ]
+        fig.suptitle(f'Epoch: {epoch}, State slice: {[slice if i not in axis_indices else ":" for i, slice in enumerate(plot_config["state_slices"])]}', fontsize=20)
         if self.use_wandb:
             wandb.log({
                 'step': epoch,
                 'val_plot': wandb.Image(fig),
             })
+        plt.savefig(save_path)
         plt.close()
         plt.close()
         if was_training:

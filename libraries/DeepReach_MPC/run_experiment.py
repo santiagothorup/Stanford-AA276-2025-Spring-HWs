@@ -238,7 +238,7 @@ opt = p.parse_args()
 if use_wandb:
     wandb.init(
         project=opt.wandb_project,
-        entity=opt.wandb_entity,
+        # entity=opt.wandb_entity,
         group=opt.wandb_group,
         name=opt.wandb_name,
     )
