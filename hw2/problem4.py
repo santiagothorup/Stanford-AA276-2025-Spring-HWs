@@ -34,7 +34,6 @@ def g(x):
 
     args:
         x: torch float32 tensor with shape [batch_size, 13]
-       
     returns:
         g: torch float32 tensor with shape [batch_size, 13, 4]
     """
@@ -64,8 +63,27 @@ def optimal_control(x, dVdx):
     returns:
         u_opt: torch tensor with shape [batch_size, 4]
     """
-    # YOUR CODE HERE
-    pass
+    # Optimal controller is a bang-ban controller for a control-affine system.
+    batch_size = x.shape[0]
+    
+    u_opt = torch.zeros(batch_size, 4, dtype=torch.float32)
+    
+    u_upper = torch.tensor([20, 8, 8, 4], dtype=torch.float32)
+    u_lower = torch.tensor([-20, -8, -8, -4], dtype=torch.float32)
+    
+    gx = g(x)
+    
+    for i in range(batch_size):
+        g_i = gx[i]
+        dVdx_i = dVdx[i]
+        dVdx_g = torch.matmul(dVdx_i, g_i)
+        
+        for j in range(4):
+            if dVdx_g[j] > 0:
+                u_opt[i, j] = u_upper[j]
+            elif dVdx_g[j] < 0:
+                u_opt[i, j] = u_lower[j]
+    return u_opt
 
 def hamiltonian(x, dVdx):
     """
@@ -80,8 +98,20 @@ def hamiltonian(x, dVdx):
     returns:
         ham:  torch tensor with shape [batch_size]
     """
-    # YOUR CODE HERE
-    pass
+    batch_size = x.shape[0]
+    ham = torch.zeros(batch_size, dtype=torch.float32)
+    u_upper = torch.tensor([20, 8, 8, 4], dtype=torch.float32)
+    gx = g(x)
+    fx = f(x)
+    
+    for i in range(batch_size):
+        g_i = gx[i]
+        f_i = fx[i]
+        dVdx_i = dVdx[i]
+        
+        ham[i] = torch.matmul(dVdx_i, f_i) + torch.matmul(torch.abs(torch.matmul(dVdx_i, g_i)),u_upper)
+    
+    return ham
 
 def hji_vi_loss(x, l, V, dVdt, dVdx):
     """
@@ -106,5 +136,14 @@ def hji_vi_loss(x, l, V, dVdt, dVdx):
     returns:
         h2:   torch tensor with shape [batch_size]
     """
-    # YOUR CODE HERE
-    pass
+    batch_size = x.shape[0]
+    h2 = torch.zeros(batch_size, dtype=torch.float32)
+    ham = hamiltonian(x, dVdx)
+    for i in range(batch_size):
+        dVdt_i = dVdt[i]
+        l_i = l[i]
+        V_i = V[i]
+
+        # Compute the HJI-VI 
+        h2[i] = torch.abs(torch.min(l_i - V_i, dVdt_i + ham[i]))
+    return h2
