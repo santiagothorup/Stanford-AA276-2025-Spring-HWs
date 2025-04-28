@@ -210,12 +210,8 @@ def g(x):
         g: torch float32 tensor with shape [batch_size, 13, 4]
     """
     if BONUS:
-        theta_i, theta_dot_i = [i for i in range(2)]
-        theta, theta_dot = [x[:, i] for i in range(2)]
-                
-        g_val = torch.zeros_like(x)
-        g_val[:, theta_i] = 0
-        g_val[:, theta_dot_i] = 0.5
+        g_val = torch.zeros(x.shape[0], 2, 1, dtype=x.dtype, device=x.device)
+        g_val[:, 1, 0] = 0.5
     else:
         PXi, PYi, PZi, QWi, QXi, QYi, QZi, VXi, VYi, VZi, WXi, WYi, WZi = [i for i in range(13)]
         PX, PY, PZ, QW, QX, QY, QZ, VX, VY, VZ, WX, WY, WZ = [x[:, i] for i in range(13)]
