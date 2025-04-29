@@ -12,7 +12,7 @@ lower_np = lower_bound.numpy()
 
 total_vol = np.prod(upper_np - lower_np)
 
-sample_size = 1000
+sample_size = 10000
 count = 0
 for i in range(sample_size):
     # Generate a random state within bounds - one dimension at a time
