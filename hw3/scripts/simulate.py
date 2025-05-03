@@ -1,4 +1,5 @@
 import torch
+import traceback
 import matplotlib.pyplot as plt
 
 from sim_utils import SamplingBasedMPC, failure_function, roll_out
@@ -6,7 +7,11 @@ from sim_utils import SamplingBasedMPC, failure_function, roll_out
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from problem3 import smooth_blending_safety_filter
+USE_SOLUTIONS = False
+if USE_SOLUTIONS:
+    from solutions.problem3 import smooth_blending_safety_filter
+else:
+    from problem3 import smooth_blending_safety_filter
 
 # environment setup
 obstacles = torch.tensor([
@@ -42,13 +47,13 @@ def u_nom(x, i):
     return mpc(x.squeeze(0)).unsqueeze(0)
 def u_sb(x, i, gamma):
     # NOTE: mpc should only operate on a single roll-out at a time
-    return smooth_blending_safety_filter(x.squeeze(0), mpc(x.squeeze(0)), gamma).unsqueeze(0)
+    return smooth_blending_safety_filter(x.squeeze(0).clone().cpu(), mpc(x.squeeze(0)).clone().cpu(), gamma, lmbda=1e4).unsqueeze(0).to(device=x.device)
 
 # simulate different controllers
 print('Simulating nominal controller...')
 mpc.reset()
 xs_nom = roll_out(initial_state.unsqueeze(0).cuda(), u_nom, nt, dt, show_progress=True).squeeze(0).cpu().numpy()
-gammas = [0, 0.5, 5]
+gammas = [0, 0.001, 0.01]
 xs_sbs = []
 for gamma in gammas:
     print(f'Simulating smooth blending safety filter with gamma={gamma}...')
@@ -56,8 +61,10 @@ for gamma in gammas:
         mpc.reset()
         xs_sbs.append(roll_out(initial_state.unsqueeze(0).cuda(), lambda x, i: u_sb(x, i, gamma), nt, dt, show_progress=True).squeeze(0).cpu().numpy())
     except Exception as e:
-        print(str(e))
-        print(f'Error simulating smooth blending safety filter with gamma={gamma}.')
+        if not isinstance(e, NotImplementedError):
+            traceback.print_exc()
+            quit()
+        print(f'Not implemented. Skipping.')
         xs_sbs.append(None)
 
 # plot
@@ -80,7 +87,7 @@ for i, gamma in enumerate(gammas):
     if xs_sbs[i] is not None:
         ax.plot(xs_sbs[i][:, 0], xs_sbs[i][:, 1], label=f'Smooth Blending Trajectory (γ={gamma})')
     else:
-        print(f'Warning: not plotting γ={gamma}, since there was an error.')
+        print(f'Warning: not plotting γ={gamma}, since the smooth blending filter is not implemented yet.')
 ax.legend()
 # save the figure
 plt.savefig('outputs/trajectories.png')

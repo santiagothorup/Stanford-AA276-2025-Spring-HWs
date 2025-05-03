@@ -15,10 +15,20 @@ obstacles = torch.tensor([
     [7.0, -4.0, 0.5]
 ])
 
-def smooth_blending_safety_filter(x, u_nom, gamma):
+def smooth_blending_safety_filter(x, u_nom, gamma, lmbda):
     """
     Compute the smooth blending safety filter.
-    You should use vf.values(.) and vf.gradients(.).
+    Refer to the definition provided in the handout.
+    You might find it useful to use functions from
+    previous homeworks, which we have imported for you.
+    These include:
+      control_limits(.)
+      f(.)
+      g(.)
+      vf.values(.)
+      vf.gradients(.)
+    NOTE: some of these functions expect batched inputs,
+    but x, u_nom are not batched inputs in this case.
     
     args:
         x:      torch tensor with shape [13]
@@ -28,4 +38,5 @@ def smooth_blending_safety_filter(x, u_nom, gamma):
         u_sb:   torch tensor with shape [4]
     """
     # YOUR CODE HERE
-    pass
+    raise NotImplementedError # REMOVE THIS LINE
+    return torch.tensor(u_sb.value, dtype=torch.float32) # NOTE: ensure you return a float32 tensor
